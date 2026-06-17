@@ -209,7 +209,11 @@ import { onHide, onLoad, onShow, onUnload } from '@dcloudio/uni-app'
 import InsTabBar from '../../components/InsTabBar.vue'
 import WorkMaskOverlay from '../../components/WorkMaskOverlay.vue'
 import { abortAllLlmRequests, hydrateLlmConfigFromBackend, loadLlmConfig } from '../../utils/llm'
-import { startPracticeGeneration } from '../../services/practice-generation-service'
+import {
+  cancelPracticeGeneration,
+  startPracticeGeneration,
+  type StartPracticeGenerationInput,
+} from '../../services/practice-generation-service'
 import { type PracticeMode } from '../../utils/question-bank'
 import { type PracticeFeedbackMode } from '../../utils/practice-session'
 import { hydrateUserTagsFromBackend, loadUserTags } from '../../utils/user-tags'
@@ -282,6 +286,7 @@ const apiGuideShakeActive = ref(false)
 const generateBreathActive = ref(false)
 const generateRequestNonce = ref(0)
 const generateCanceled = ref(false)
+const activeGenerationInput = ref<StartPracticeGenerationInput | null>(null)
 const pageHeaderHeightPx = ref(resolvePageHeaderFallbackHeight(safeTopPx.value, screenWidthPx.value))
 const pageHeaderStyle = computed(() => ({ paddingTop: `${safeTopPx.value}px` }))
 const pageScrollStyle = computed(() => ({ paddingTop: `${Math.round(pageHeaderHeightPx.value)}px` }))
@@ -379,6 +384,10 @@ onHide(() => {
     generateRequestNonce.value += 1
     generateCanceled.value = true
     isLoading.value = false
+    if (activeGenerationInput.value) {
+      cancelPracticeGeneration(activeGenerationInput.value)
+      activeGenerationInput.value = null
+    }
   }
   flushMaterialDraftSync()
   clearGenerateBreathPulse()
@@ -391,6 +400,10 @@ onUnload(() => {
   generateRequestNonce.value += 1
   generateCanceled.value = true
   isLoading.value = false
+  if (activeGenerationInput.value) {
+    cancelPracticeGeneration(activeGenerationInput.value)
+    activeGenerationInput.value = null
+  }
   flushMaterialDraftSync()
   clearGenerateBreathPulse()
   clearApiGuideTimers()
@@ -640,6 +653,10 @@ function cancelGenerate() {
   generateCanceled.value = true
   generateRequestNonce.value += 1
   isLoading.value = false
+  if (activeGenerationInput.value) {
+    cancelPracticeGeneration(activeGenerationInput.value)
+    activeGenerationInput.value = null
+  }
   abortAllLlmRequests()
 }
 
@@ -789,7 +806,7 @@ async function onGenerate() {
   isLoading.value = true
   let keepLoadingForNavigation = false
   try {
-    const generation = await startPracticeGeneration({
+    const generationInput: StartPracticeGenerationInput = {
       material: trimmedMaterial,
       type: questionType.value,
       difficulty: difficulty.value,
@@ -800,7 +817,9 @@ async function onGenerate() {
       userTags,
       requestNonce,
       timeoutMs: pipelineTimeoutMs,
-    })
+    }
+    activeGenerationInput.value = generationInput
+    const generation = await startPracticeGeneration(generationInput)
     if (requestNonce !== generateRequestNonce.value || generateCanceled.value) return
 
     if (!generation.success) {
@@ -844,6 +863,7 @@ async function onGenerate() {
     error.value = message || '生成失败，请稍后重试'
   } finally {
     if (requestNonce !== generateRequestNonce.value) return
+    activeGenerationInput.value = null
     if (!keepLoadingForNavigation) {
       isLoading.value = false
     }

@@ -199,8 +199,15 @@ const sessionModeLabel = computed(() => (sessionMode.value === 'modeA' ? '原文
 const feedbackModeLabel = computed(() => (isInstantFeedback.value ? '即时反馈' : '全做再看'))
 const currentQuestionTagLabel = computed(() => resolveDisplayTag(currentQuestion.value?.tag))
 const multiTips = computed(() =>
-  isInstantFeedback.value ? '可多选，选满 2 项后自动判题' : '可多选，再次点击可取消',
+  isInstantFeedback.value
+    ? `可多选，选满 ${expectedMultiChoiceCount.value} 项后自动判题`
+    : '可多选，再次点击可取消',
 )
+const expectedMultiChoiceCount = computed(() => {
+  const question = currentQuestion.value
+  if (!question || question.type !== 'multi') return 2
+  return resolveExpectedChoiceCount(question)
+})
 const hasPendingGeneration = computed(() => {
   if (!generationJob.value) return false
   if (generationJob.value.status !== 'running') return false
@@ -361,6 +368,7 @@ function initPracticeFromLocalSession(preserveRuntime = true) {
 }
 
 function handlePracticeSessionUpdated(payload?: { sessionId?: string }) {
+  if (submitted.value) return
   const payloadSessionId = String(payload?.sessionId || '').trim()
   if (payloadSessionId && activeSessionId.value && payloadSessionId !== activeSessionId.value) {
     return
@@ -369,6 +377,7 @@ function handlePracticeSessionUpdated(payload?: { sessionId?: string }) {
 }
 
 function handleGenerationJobUpdated(payload?: { sessionId?: string }) {
+  if (submitted.value) return
   const payloadSessionId = String(payload?.sessionId || '').trim()
   if (payloadSessionId && activeSessionId.value && payloadSessionId !== activeSessionId.value) {
     return
@@ -543,6 +552,11 @@ function setAnswer(value: string): void {
   }
 }
 
+function resolveExpectedChoiceCount(question: StoredQuestion): number {
+  const expected = parseChoiceAnswers(question.answer, question.options).length
+  return Math.max(2, Math.min(3, expected || 2))
+}
+
 const allGradedButNotSubmitted = computed(() =>
   isInstantFeedback.value
   && !submitted.value
@@ -575,7 +589,7 @@ function gradeAndLockQuestion(question: StoredQuestion): void {
   }
 
   grading.value = next
-  setQuestionWrong(question.id, !result.correct)
+  setQuestionWrong(question.id, !result.correct, { syncBackend: false })
   void submitQuestionAttempt(question.id, result.user, feedbackMode.value).catch(() => {
     // ignore backend attempt failure
   })
@@ -616,7 +630,7 @@ function selectOption(optionKey: string): void {
     : [...currentSelected, normalizedKey]
 
   setAnswer(formatChoiceAnswer(nextSelected))
-  if (isInstantFeedback.value && nextSelected.length >= 2) {
+  if (isInstantFeedback.value && nextSelected.length >= resolveExpectedChoiceCount(question)) {
     gradeAndLockQuestion(question)
   }
 }
@@ -787,7 +801,7 @@ async function submitPaper(): Promise<void> {
     const userInput = answerFor(question.id)
     const result = gradeQuestion(question, userInput)
     nextGrading[question.id] = result
-    setQuestionWrong(question.id, !result.correct)
+    setQuestionWrong(question.id, !result.correct, { syncBackend: false })
     void submitQuestionAttempt(question.id, result.user, feedbackMode.value).catch(() => {
       // ignore backend attempt failure
     })

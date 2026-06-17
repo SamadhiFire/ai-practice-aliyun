@@ -79,7 +79,7 @@ const GENERATION_TEMPERATURE = 0.78;
 const GENERATION_TOP_P = 0.93;
 const REPAIR_TEMPERATURE = 0.92;
 const REPAIR_TOP_P = 0.96;
-const ALLOW_DETERMINISTIC_FALLBACK = process.env.ALLOW_DETERMINISTIC_FALLBACK !== "0";
+const ALLOW_DETERMINISTIC_FALLBACK = process.env.ALLOW_DETERMINISTIC_FALLBACK === "1";
 
 function estimateExtractionOutputTokens(request) {
   const keypointCount = getRequestedKeypointCount(request?.targetCount || 0);
@@ -675,6 +675,10 @@ function inspectQuestionSet(
       for (let rightIndex = leftIndex + 1; rightIndex < questions.length; rightIndex += 1) {
         const left = questions[leftIndex];
         const right = questions[rightIndex];
+        if (!left || typeof left !== "object" || !right || typeof right !== "object") {
+          continue;
+        }
+
         const stemSimilarity = computeTextSimilarity(left.stem, right.stem);
         const optionSimilarity = computeTextSimilarity(
           buildOptionSignature(left),

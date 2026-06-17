@@ -127,6 +127,15 @@ function validateGeneratePayload(payload) {
   payload.requestNonce = requestNonce;
 }
 
+function normalizeGenerateRequestPayload(payload) {
+  validateGeneratePayload(payload);
+  return {
+    ...payload,
+    feedbackMode: normalizeFeedbackMode(payload.feedbackMode),
+    userTags: normalizeTags(payload.userTags || []),
+  };
+}
+
 function resolveAuthAccount(payload) {
   if (!payload || typeof payload !== "object") {
     return "";
@@ -583,16 +592,36 @@ function createApp(store = new MemoryStore()) {
 
   router.register(
     "POST",
+    `${API_PREFIX}/questions/generate/cancel`,
+    { bodyType: "json" },
+    async (ctx) => {
+      const payload = normalizeGenerateRequestPayload(ctx.body);
+      const idempotencyKey = buildIdempotencyKey(ctx.user.userId, payload);
+      const existing = await store.getIdempotency(ctx.user.userId, idempotencyKey);
+      let cancelled = false;
+
+      if (existing?.jobId) {
+        const generationJob = await store.getGenerationJob(ctx.user.userId, existing.jobId);
+        if (generationJob && generationJob.status === "running") {
+          generationJob.status = "canceled";
+          generationJob.updatedAt = now();
+          await store.saveGenerationJob(ctx.user.userId, generationJob);
+          cancelled = true;
+        }
+      }
+
+      sendOk(ctx.res, {
+        cancelled,
+      });
+    }
+  );
+
+  router.register(
+    "POST",
     `${API_PREFIX}/questions/generate`,
     { bodyType: "json" },
     async (ctx) => {
-      validateGeneratePayload(ctx.body);
-
-      const payload = {
-        ...ctx.body,
-        feedbackMode: normalizeFeedbackMode(ctx.body.feedbackMode),
-        userTags: normalizeTags(ctx.body.userTags || []),
-      };
+      const payload = normalizeGenerateRequestPayload(ctx.body);
       const idempotencyKey = buildIdempotencyKey(ctx.user.userId, payload);
       const existing = await store.getIdempotency(ctx.user.userId, idempotencyKey);
 
@@ -619,6 +648,10 @@ function createApp(store = new MemoryStore()) {
       const job = await store.createJobShell(payload, session.id);
       session.generationJobId = job.jobId;
       await store.saveGenerationJob(ctx.user.userId, job);
+      await store.setIdempotency(ctx.user.userId, idempotencyKey, {
+        jobId: job.jobId,
+        sessionId: session.id,
+      });
 
       let result;
       try {
@@ -639,6 +672,15 @@ function createApp(store = new MemoryStore()) {
           500,
           error.code || ERROR_CODES.LLM_FAILED,
           error.message || "question generation failed"
+        );
+      }
+
+      const currentJob = await store.getGenerationJob(ctx.user.userId, job.jobId);
+      if (currentJob && currentJob.status === "canceled") {
+        throw new HttpError(
+          409,
+          ERROR_CODES.CONFLICT,
+          "question generation was canceled"
         );
       }
 

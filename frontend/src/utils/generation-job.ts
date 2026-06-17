@@ -583,7 +583,7 @@ export async function triggerGenerationBatch(
           const latestQuestions = Array.isArray(remotePayload.questions) && remotePayload.questions.length > 0
             ? remotePayload.questions
             : remotePayload.session.questions
-          upsertStoredQuestions(latestQuestions)
+          upsertStoredQuestions(latestQuestions, { syncBackend: false })
           replaceActivePracticeSession(remotePayload.session)
           return replaceGenerationJob(remotePayload.generationJob)
         }

@@ -388,6 +388,26 @@ export async function createQuestionsGenerationJobInBackend(payload: {
   })
 }
 
+export async function cancelQuestionsGenerationRequestInBackend(payload: {
+  material: string
+  type: 'single' | 'multi'
+  difficulty: 'easy' | 'medium' | 'hard'
+  mode: 'modeA' | 'modeB'
+  feedbackMode: 'instant' | 'after_all'
+  targetCount: number
+  initialBatchCount: number
+  userTags: string[]
+  requestNonce: number
+}): Promise<boolean | null> {
+  const data = await requestWithAuth<{ cancelled?: unknown }>({
+    path: '/questions/generate/cancel',
+    method: 'POST',
+    data: payload,
+  })
+  if (!data) return null
+  return Boolean(data.cancelled)
+}
+
 export async function fetchGenerationJobFromBackend(jobId: string): Promise<GenerationJob | null> {
   const data = await requestWithAuth<{ generationJob?: unknown }>({
     path: `/generation-jobs/${encodeURIComponent(jobId)}`,

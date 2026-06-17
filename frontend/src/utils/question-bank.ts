@@ -33,6 +33,10 @@ const BANK_KEY = 'study_quiz_question_bank_v1'
 const QUESTION_BANK_QUERY_PAGE_SIZE = 200
 let questionBankSyncTimer: ReturnType<typeof setTimeout> | null = null
 
+interface SaveQuestionBankOptions {
+  syncBackend?: boolean
+}
+
 function normalizeTimestamp(raw: unknown): number {
   const num = Number(raw)
   if (!Number.isFinite(num) || num <= 0) return 0
@@ -170,9 +174,19 @@ export function loadQuestionBank(): StoredQuestion[] {
   return sortQuestionBankDesc(list)
 }
 
-function saveQuestionBank(list: StoredQuestion[]): void {
+function clearPendingQuestionBankSync(): void {
+  if (!questionBankSyncTimer) return
+  clearTimeout(questionBankSyncTimer)
+  questionBankSyncTimer = null
+}
+
+function saveQuestionBank(list: StoredQuestion[], options: SaveQuestionBankOptions = {}): void {
   const sorted = sortQuestionBankDesc(list)
   uni.setStorageSync(BANK_KEY, sorted)
+  if (options.syncBackend === false) {
+    clearPendingQuestionBankSync()
+    return
+  }
   scheduleQuestionBankBackendSync(sorted)
 }
 
@@ -208,7 +222,10 @@ export function addGeneratedQuestions(questions: Question[], mode: PracticeMode)
   return prepared
 }
 
-export function upsertStoredQuestions(questions: StoredQuestion[]): StoredQuestion[] {
+export function upsertStoredQuestions(
+  questions: StoredQuestion[],
+  options: SaveQuestionBankOptions = {},
+): StoredQuestion[] {
   const normalizedIncoming = (questions || [])
     .map((item) => normalizeQuestion(item))
     .filter((item): item is StoredQuestion => !!item)
@@ -228,7 +245,7 @@ export function upsertStoredQuestions(questions: StoredQuestion[]): StoredQuesti
     return !incomingSignatureSet.has(signature)
   })
 
-  saveQuestionBank([...normalizedIncoming, ...existing])
+  saveQuestionBank([...normalizedIncoming, ...existing], options)
   return normalizedIncoming
 }
 
@@ -272,7 +289,11 @@ export function updateQuestionStem(id: string, stem: string): void {
   saveQuestionBank(list)
 }
 
-export function setQuestionWrong(id: string, isWrong: boolean): void {
+export function setQuestionWrong(
+  id: string,
+  isWrong: boolean,
+  options: SaveQuestionBankOptions = {},
+): void {
   const now = Date.now()
   const list = loadQuestionBank().map((item) => {
     if (item.id !== id) return item
@@ -294,7 +315,7 @@ export function setQuestionWrong(id: string, isWrong: boolean): void {
     }
   })
 
-  saveQuestionBank(list)
+  saveQuestionBank(list, options)
 }
 
 export function setQuestionMastered(id: string, isMastered: boolean): void {
@@ -374,7 +395,7 @@ export function applyQuestionAttemptStats(
     }
   })
 
-  saveQuestionBank(list)
+  saveQuestionBank(list, { syncBackend: false })
 }
 
 export async function submitQuestionAttempt(
@@ -388,7 +409,10 @@ export async function submitQuestionAttempt(
     feedbackMode,
   }).catch(() => null)
 
-  if (!result) return
+  if (!result) {
+    scheduleQuestionBankBackendSync(loadQuestionBank())
+    return
+  }
 
   applyQuestionAttemptStats(id, {
     practiceCount: result.practiceCount,

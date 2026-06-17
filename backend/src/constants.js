@@ -77,7 +77,7 @@ const DEFAULT_LLM_CONFIG = {
 const DEFAULT_STORAGE_DRIVER = process.env.STORAGE_DRIVER || "mongodb";
 const DEFAULT_MONGODB_URL =
   process.env.MONGODB_URL ||
-  "mongodb://root:s45b7svj@ainiumashauti-mongodb.ns-9qp69vi0.svc:27017";
+  "mongodb://127.0.0.1:27017";
 const DEFAULT_MONGODB_DB_NAME = process.env.MONGODB_DB || "ainnn_backend";
 const DEFAULT_MONGODB_COLLECTION =
   process.env.MONGODB_COLLECTION || "backend_state";

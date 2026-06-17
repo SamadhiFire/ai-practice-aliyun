@@ -1,6 +1,5 @@
 import {
   clearGenerationJob,
-  createGenerationJobAfterInitial,
   replaceGenerationJob,
 } from '../utils/generation-job'
 import {
@@ -9,11 +8,13 @@ import {
 } from '../utils/question-bank'
 import {
   replaceActivePracticeSession,
-  saveActivePracticeSession,
   type PracticeFeedbackMode,
 } from '../utils/practice-session'
 import { abortAllLlmRequests } from '../utils/llm'
-import { createQuestionsGenerationJobInBackend } from '../utils/backend-sync'
+import {
+  cancelQuestionsGenerationRequestInBackend,
+  createQuestionsGenerationJobInBackend,
+} from '../utils/backend-sync'
 import { BackendApiError } from '../utils/backend-api'
 
 export interface StartPracticeGenerationInput {
@@ -59,13 +60,19 @@ function isDevRuntime(): boolean {
 
 
 
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> {
+function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  timeoutMessage: string,
+  onTimeout?: () => void,
+): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     let settled = false
     const timer = setTimeout(() => {
       if (settled) return
       settled = true
       abortAllLlmRequests()
+      onTimeout?.()
       reject(new Error(timeoutMessage))
     }, timeoutMs)
 
@@ -102,20 +109,26 @@ export async function startPracticeGeneration(
 ): Promise<StartPracticeGenerationResult> {
   clearGenerationJob()
   try {
+    const backendPayload = {
+      material: input.material,
+      type: input.type,
+      difficulty: input.difficulty,
+      mode: input.mode,
+      feedbackMode: input.feedbackMode,
+      targetCount: input.targetCount,
+      initialBatchCount: input.initialBatchCount,
+      userTags: input.userTags,
+      requestNonce: input.requestNonce,
+    }
     const backendResult = await withTimeout(
-      createQuestionsGenerationJobInBackend({
-        material: input.material,
-        type: input.type,
-        difficulty: input.difficulty,
-        mode: input.mode,
-        feedbackMode: input.feedbackMode,
-        targetCount: input.targetCount,
-        initialBatchCount: input.initialBatchCount,
-        userTags: input.userTags,
-        requestNonce: input.requestNonce,
-      }),
+      createQuestionsGenerationJobInBackend(backendPayload),
       input.timeoutMs,
       GENERATE_TIMEOUT_MESSAGE,
+      () => {
+        void cancelQuestionsGenerationRequestInBackend(backendPayload).catch(() => {
+          // ignore backend cancel failure
+        })
+      },
     )
 
     if (!backendResult) {
@@ -125,7 +138,7 @@ export async function startPracticeGeneration(
       }
     }
 
-    const saved = upsertStoredQuestions(backendResult.session.questions)
+    const saved = upsertStoredQuestions(backendResult.session.questions, { syncBackend: false })
     const session = replaceActivePracticeSession(backendResult.session)
     const shouldKeepJob = shouldKeepGenerationJobAfterInitial({
       targetCount: input.targetCount,
@@ -174,4 +187,21 @@ export async function startPracticeGeneration(
       error: message.trim() || GENERATE_FAIL_MESSAGE,
     }
   }
+}
+
+export function cancelPracticeGeneration(input: StartPracticeGenerationInput): void {
+  const backendPayload = {
+    material: input.material,
+    type: input.type,
+    difficulty: input.difficulty,
+    mode: input.mode,
+    feedbackMode: input.feedbackMode,
+    targetCount: input.targetCount,
+    initialBatchCount: input.initialBatchCount,
+    userTags: input.userTags,
+    requestNonce: input.requestNonce,
+  }
+  void cancelQuestionsGenerationRequestInBackend(backendPayload).catch(() => {
+    // ignore backend cancel failure
+  })
 }
