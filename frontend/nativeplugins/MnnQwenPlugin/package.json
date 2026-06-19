@@ -1,0 +1,25 @@
+{
+  "name": "MnnQwenPlugin",
+  "id": "MnnQwenPlugin",
+  "version": "1.0.0",
+  "description": "MNN + Qwen 端侧推理插件 — 用于 AI牛马刷题 的本地 CPU 离线出题能力 (arm64-v8a)",
+  "_dp_type": "nativeplugin",
+  "_dp_nativeplugin": {
+    "android": {
+      "plugins": [
+        {
+          "type": "module",
+          "name": "MnnQwenPlugin",
+          "class": "com.studyquiz.mnn.MnnQwenModule"
+        }
+      ],
+      "integrateType": "aar",
+      "abis": ["arm64-v8a"],
+      "minSdkVersion": 24,
+      "useAndroidX": true,
+      "compileSDKVersion": 33,
+      "targetSdkVersion": 33,
+      "permissions": []
+    }
+  }
+}

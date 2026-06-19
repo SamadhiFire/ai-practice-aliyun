@@ -1,6 +1,7 @@
 import { probeProviderApiKey } from '../services/llm-handshake-service'
 import { fetchLlmConfigFromBackend, syncLlmConfigToBackend } from './backend-sync'
 import { fetchLlmProvidersFromBackend, verifyLlmConfigInBackend } from './backend-sync'
+import { isLocalMnnEnabled, localMnnChatCompletion } from './local-mnn-llm'
 
 export interface ChatMessage {
   role: 'system' | 'user'
@@ -543,6 +544,11 @@ export async function chatCompletion(
   config?: Partial<LlmConfig>,
   options?: ChatCompletionOptions,
 ): Promise<string> {
+  // 比赛版 / 本地 MNN 模式：直接走本地 CPU 推理，跳过云端 API Key 验证与调用
+  if (isLocalMnnEnabled()) {
+    return localMnnChatCompletion(messages, undefined, options)
+  }
+
   const merged = { ...loadLlmConfig(), ...(config || {}) }
   const provider = normalizeProvider(merged.provider, merged.baseUrl)
   const preset = PROVIDER_PRESETS[provider]

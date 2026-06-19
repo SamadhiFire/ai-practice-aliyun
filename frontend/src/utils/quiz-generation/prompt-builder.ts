@@ -5,7 +5,7 @@ import type { Chunk } from '../preprocess'
 import { MODE_PROMPT_CONTRACTS, SHARED_OUTPUT_CONTRACT } from './prompt-contract'
 
 const MAX_KEYPOINT_PROMPT_CHARS = 1200
-const MAX_QUESTION_PROMPT_CHARS = 2200
+const MAX_QUESTION_PROMPT_CHARS = 1500
 const MAX_QUESTION_PROMPT_CHUNKS = 4
 const MAX_KEYPOINT_EXTRACTION_CHUNKS = 3
 
@@ -32,6 +32,13 @@ export function resolveLegacyQuestionTokenBudget(type: 'single' | 'multi', count
   const perQuestion = type === 'single' ? 180 : 210
   const target = 500 + safeCount * perQuestion
   return Math.max(1000, Math.min(4600, target))
+}
+
+export function resolveMnnBundleTokenBudget(type: 'single' | 'multi', count: number): number {
+  const safeCount = normalizeQuestionCountForBudget(count)
+  const perQuestion = type === 'single' ? 150 : 180
+  const target = 400 + safeCount * perQuestion
+  return Math.max(800, Math.min(3200, target))
 }
 
 export function pickRepresentativeChunks(chunks: Chunk[], maxCount: number): Chunk[] {
@@ -188,6 +195,133 @@ export function buildBundleGenerationPrompt(input: {
     ],
     options: {
       maxOutputTokens: resolveBundleTokenBudget(input.type, input.count),
+      temperature: input.temperature,
+    },
+  }
+}
+
+export function buildMnnBundlePrompt(input: {
+  material: string
+  type: 'single' | 'multi'
+  count: number
+  difficulty: 'easy' | 'medium' | 'hard'
+  mode: PracticeMode
+  userTags: string[]
+  temperature?: number
+  generationSeed?: string
+}): PromptRequest {
+  const contract = MODE_PROMPT_CONTRACTS[input.mode]
+
+  const systemPrompt = [
+    '你是严格的出题助手。先提取知识点，再出题。',
+    `${contract.label}：${contract.summary}`,
+    contract.extractionBoundary,
+    contract.questionBoundary,
+    contract.evidenceRule,
+    contract.extensionRule,
+    '只输出纯 JSON，不要 markdown 代码块（不要 ```json），不要任何解释文字或注释。',
+    '重要：如果你的输出以 ``` 开头，会导致解析失败。请直接输出 { 开头的 JSON 文本。',
+    '顶层仅允许 keypoints 与 questions 两个字段。',
+    `keypoints 每项仅允许 ${SHARED_OUTPUT_CONTRACT.keypointFields.join(',')}。`,
+    `questions 每项仅允许 ${SHARED_OUTPUT_CONTRACT.questionFields.join(',')}。`,
+    `options 必须是长度为 ${SHARED_OUTPUT_CONTRACT.optionCount} 的数组，且每项仅允许 ${SHARED_OUTPUT_CONTRACT.optionFields.join(',')}。`,
+    `请输出 3-4 个 keypoints 和 ${input.count} 道 ${input.type} 题，questions 数组长度必须严格等于 ${input.count}。`,
+    'keypoints.id 使用 kp_0、kp_1 这类格式，questions.keypoint_id 必须引用这些 id。',
+    'single 题必须是 4 选 1，answer 为一个字母（如 A）。',
+    'multi 题必须是 4 选 2，answer 用逗号分隔两个字母（如 A,C）。',
+    ...buildSharedQuestionRules(),
+    'evidence_quote 请控制在 24 字以内，explanation 请控制在 30 字以内。尽可能精简。',
+    '若输入包含 seed，请以其作为变体随机源，确保同材料多次请求时题干与选项表达明显不同。',
+    buildUserTagRule(input.userTags),
+  ].join(' ')
+
+  const userPayload: Record<string, unknown> = {
+    type: input.type,
+    count: input.count,
+    difficulty: input.difficulty,
+    mode: input.mode === 'modeA' ? 'A' : 'B',
+    user_tags: input.userTags,
+    material: input.material,
+  }
+  if (input.generationSeed) {
+    userPayload.seed = input.generationSeed
+  }
+
+  return {
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: JSON.stringify(userPayload) },
+    ],
+    options: {
+      maxOutputTokens: resolveMnnBundleTokenBudget(input.type, input.count),
+      temperature: input.temperature,
+    },
+  }
+}
+
+export function buildMnnQuestionPrompt(input: {
+  material: string
+  keypoints: Keypoint[]
+  keypointPlan: Array<{
+    keypoint_id: string
+    title: string
+    importance_score: number
+    expected_count: number
+    evidence_quote: string
+  }>
+  type: 'single' | 'multi'
+  count: number
+  difficulty: 'easy' | 'medium' | 'hard'
+  mode: PracticeMode
+  userTags: string[]
+  temperature?: number
+  generationSeed?: string
+}): PromptRequest {
+  const contract = MODE_PROMPT_CONTRACTS[input.mode]
+
+  const systemPrompt = [
+    '你是严格的出题助手。',
+    `${contract.label}：${contract.summary}`,
+    contract.questionBoundary,
+    contract.evidenceRule,
+    contract.extensionRule,
+    '只输出纯 JSON，不要 markdown 代码块（不要 ```json），不要任何解释文字或注释。',
+    '重要：如果你的输出以 ``` 开头，会导致解析失败。请直接输出 { 开头的 JSON 文本。',
+    '顶层仅允许 questions。',
+    `questions 每项仅允许 ${SHARED_OUTPUT_CONTRACT.questionFields.join(',')}。`,
+    `options 必须是长度为 ${SHARED_OUTPUT_CONTRACT.optionCount} 的数组，且每项仅允许 ${SHARED_OUTPUT_CONTRACT.optionFields.join(',')}。`,
+    `请严格输出 ${input.count} 道 ${input.type} 题，questions 数组长度必须严格等于 ${input.count}。`,
+    '每道题必须绑定给定 keypoint_id，题干不得重复。',
+    'single 题必须是 4 选 1，answer 为一个字母（如 A）。',
+    'multi 题必须是 4 选 2，answer 用逗号分隔两个字母（如 A,C）。',
+    ...buildSharedQuestionRules(),
+    '优先覆盖 importance 高的知识点，并遵守 keypoint_plan 的 expected_count。',
+    'evidence_quote 请控制在 24 字以内，explanation 请控制在 30 字以内。尽可能精简。',
+    '若输入包含 seed，请以其作为变体随机源，确保同材料多次请求时题干与选项表达明显不同。',
+    buildUserTagRule(input.userTags),
+  ].join(' ')
+
+  const userPayload: Record<string, unknown> = {
+    type: input.type,
+    count: input.count,
+    difficulty: input.difficulty,
+    mode: input.mode === 'modeA' ? 'A' : 'B',
+    user_tags: input.userTags,
+    keypoint_plan: input.keypointPlan,
+    keypoints: input.keypoints,
+    material: input.material,
+  }
+  if (input.generationSeed) {
+    userPayload.seed = input.generationSeed
+  }
+
+  return {
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: JSON.stringify(userPayload) },
+    ],
+    options: {
+      maxOutputTokens: resolveMnnBundleTokenBudget(input.type, input.count),
       temperature: input.temperature,
     },
   }

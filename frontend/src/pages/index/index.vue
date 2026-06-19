@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="page-root">
     <view class="page-header-fixed" :style="pageHeaderStyle">
       <view class="title-wrap">
@@ -10,7 +10,7 @@
             @error="onLogoImageError"
           />
         </view>
-        <text class="page-subtitle">AI 负责出题，牛马负责变强，我爱刷题！！！</text>
+        <text class="page-subtitle">{{ isLocalMnnMode ? '🤖 本地AI出题 · 牛马负责变强！' : 'AI 负责出题，牛马负责变强，我爱刷题！！！' }}</text>
       </view>
     </view>
 
@@ -49,11 +49,7 @@
                   :class="{ 'is-disabled': isMaterialToolDisabled }"
                   @click.stop="captureMaterialImage"
                 >
-                  <image
-                    class="material-tool-icon"
-                    :src="materialCameraIconSvg"
-                    mode="aspectFit"
-                  />
+                  <text class="material-tool-camera">📷</text>
                 </view>
                 <view
                   v-if="material.length > 0"
@@ -168,10 +164,10 @@
               >
                 一键生成
               </button>
-              <view v-if="!isLoading && !isApiKeyReady" class="generate-btn-blocker" @click="handleGenerateBlocked" />
+              <view v-if="!isLoading && !isApiKeyReady && !isLocalMnnMode" class="generate-btn-blocker" @click="handleGenerateBlocked" />
             </view>
             <view
-              v-if="showApiGuide"
+              v-if="showApiGuide && !isLocalMnnMode"
               class="api-guide-row"
               :class="[apiGuideIsError ? 'is-error' : '', apiGuideShakeActive ? 'is-shaking' : '']"
               @click="handleGoToApiConfig"
@@ -229,6 +225,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
+import { isLocalMnnEnabled, getCachedRuntimeStatus } from '../../utils/local-mnn-llm'
 import { onHide, onLoad, onShow, onUnload } from '@dcloudio/uni-app'
 import InsTabBar from '../../components/InsTabBar.vue'
 import WorkMaskOverlay from '../../components/WorkMaskOverlay.vue'
@@ -263,7 +260,7 @@ const difficultyOptions = [
   { label: '困难', value: 'hard' },
 ] as const
 
-const presetCounts = [5, 10, 15]
+const presetCounts = [3, 5, 8]
 const FOCUS_MATERIAL_ONCE_KEY = 'study_quiz_focus_material_once'
 const API_KEY_SYNC_EVENT = 'study_api_key_changed'
 const MATERIAL_DRAFT_STORAGE_KEY = 'study_quiz_material_draft_v1'
@@ -279,7 +276,7 @@ const questionType = ref<'single' | 'multi'>('single')
 const feedbackMode = ref<PracticeFeedbackMode>('instant')
 const difficulty = ref<'easy' | 'medium' | 'hard'>('medium')
 const countMode = ref<'preset' | 'custom'>('preset')
-const selectedPresetCount = ref(10)
+const selectedPresetCount = ref(isLocalMnnEnabled() ? 3 : 5)
 const customCount = ref<number | null>(null)
 const showCustomCountDialog = ref(false)
 const customCountDraft = ref('')
@@ -296,7 +293,6 @@ const mascotCandidates: string[] = [
 const mascotCandidateIndex = ref(0)
 const mascotSrc = ref(mascotCandidates[0])
 const materialClearIconSvg = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="%23CCCCCC" stroke-width="1.5"/><path d="M8.5 8.5L15.5 15.5M15.5 8.5L8.5 15.5" stroke="%23CCCCCC" stroke-width="1.5" stroke-linecap="round"/></svg>'
-const materialCameraIconSvg = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M8.5 6.5L9.8 4.8C10.1 4.3 10.6 4 11.2 4H12.8C13.4 4 13.9 4.3 14.2 4.8L15.5 6.5H18C19.1 6.5 20 7.4 20 8.5V17.2C20 18.3 19.1 19.2 18 19.2H6C4.9 19.2 4 18.3 4 17.2V8.5C4 7.4 4.9 6.5 6 6.5H8.5Z" stroke="%2300B368" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.2" stroke="%2300B368" stroke-width="1.6"/><path d="M17 9.3H17.01" stroke="%2300B368" stroke-width="2" stroke-linecap="round"/></svg>'
 
 type MaterialImageSource = 'album' | 'camera'
 
@@ -336,6 +332,7 @@ const pageHeaderHeightPx = ref(resolvePageHeaderFallbackHeight(safeTopPx.value, 
 const pageHeaderStyle = computed(() => ({ paddingTop: `${safeTopPx.value}px` }))
 const pageScrollStyle = computed(() => ({ paddingTop: `${Math.round(pageHeaderHeightPx.value)}px` }))
 const isMaterialToolDisabled = computed(() => isLoading.value || isImagePreparing.value)
+const isLocalMnnMode = computed(() => isLocalMnnEnabled())
 const trimmedMaterialLength = computed(() => material.value.trim().length)
 const shouldLockToSourceExtraction = computed(() =>
   trimmedMaterialLength.value > 0 && trimmedMaterialLength.value <= 50,
@@ -354,10 +351,10 @@ const feedbackHintText = computed(() =>
 const isMounted = ref(true)
 let stopWatchMaterial: () => void
 let stopWatchMaterialMode: () => void
-const ERROR_INVALID_API_KEY = '请先填写正确的 API Key'
+const ERROR_INVALID_API_KEY = '模型未就绪，请先在个人页加载本地模型'
 const ERROR_EMPTY_MATERIAL = '请先输入学习材料'
 const ERROR_MODE_B_NEED_LONG_MATERIAL = '50字以内内容请使用【原文提取】'
-const ERROR_GENERATE_TIMEOUT = '生成超时，请检查网络或 API 配置后重试'
+const ERROR_GENERATE_TIMEOUT = '生成超时，请重试或减少题量'
 const ERROR_IMAGE_INVALID = '请选择 JPG、PNG、WEBP 或 GIF 图片'
 const ERROR_IMAGE_TOO_LARGE = '图片不能超过 8MB，请压缩后再上传'
 const MAX_MATERIAL_IMAGE_BYTES = 8 * 1024 * 1024
@@ -387,7 +384,7 @@ let materialDraftSyncTimer: ReturnType<typeof setTimeout> | null = null
 let materialDraftStorageShadow = ''
 
 const MIN_CUSTOM_COUNT = 1
-const MAX_CUSTOM_COUNT = 50
+const MAX_CUSTOM_COUNT = 10
 
 function isBrowserTabBackgroundHidden(): boolean {
   try {
@@ -536,7 +533,8 @@ function hasApiKeyConfigured(): boolean {
 }
 
 function syncApiGuideVisibility() {
-  isApiKeyReady.value = hasApiKeyConfigured()
+  // 本地 MNN 模式下无需 API Key，视同已配置
+  isApiKeyReady.value = isLocalMnnMode.value || hasApiKeyConfigured()
   showApiGuide.value = !isApiKeyReady.value
   if (!showApiGuide.value) {
     clearApiGuideTimers()
@@ -697,6 +695,13 @@ function handleGoToApiConfig() {
 
 function handleGenerateBlocked() {
   if (isLoading.value) return
+  if (isLocalMnnMode.value) {
+    uni.showToast({
+      title: '请先在个人页加载本地模型',
+      icon: 'none',
+    })
+    return
+  }
   void triggerApiGuideErrorState()
   uni.showToast({
     title: ERROR_INVALID_API_KEY,
@@ -953,6 +958,8 @@ async function readImagePathWithFetch(path: string): Promise<string> {
 }
 
 function resolveImageProviderError(): string {
+  // 本地 MNN 模式下跳过云端 provider 检查
+  if (isLocalMnnMode.value) return ''
   const config = loadLlmConfig()
   if (config.provider === 'deepseek') {
     return '当前 DeepSeek 不支持图片解析，请切换 OpenAI、Gemini 或千问视觉模型'
@@ -995,6 +1002,12 @@ async function startImageMaterialGeneration(sourceType: MaterialImageSource): Pr
   if (isMaterialToolDisabled.value) return
   error.value = ''
   lastGeneratedCount.value = 0
+
+  // 本地 MNN 模式不支持图片识别
+  if (isLocalMnnMode.value) {
+    uni.showToast({ title: '本地模型暂不支持图片识别，请直接输入文字材料', icon: 'none', duration: 2000 })
+    return
+  }
 
   if (!isApiKeyReady.value) {
     handleGenerateBlocked()
@@ -1211,6 +1224,17 @@ async function runPracticeGeneration(options: RunPracticeGenerationOptions): Pro
 }
 
 function onGenerate() {
+  // 本地 MNN 模式下检查模型是否已加载
+  if (isLocalMnnMode.value) {
+    const status = getCachedRuntimeStatus()
+    if (!status?.modelLoaded) {
+      uni.showToast({
+        title: '请先在个人页加载本地模型',
+        icon: 'none',
+      })
+      return
+    }
+  }
   void runPracticeGeneration({
     materialText: material.value.trim(),
   })
@@ -1426,10 +1450,16 @@ watch([material, mode], () => {
 }
 
 .material-tool-plus {
-  color: #00B368;
+  color: #07C160;
   font-size: 42rpx;
   line-height: 1;
   transform: translateY(-2rpx);
+}
+
+.material-tool-camera {
+  font-size: 28rpx;
+  line-height: 1;
+  transform: translateY(-1rpx);
 }
 
 .material-tool-icon {

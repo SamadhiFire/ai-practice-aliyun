@@ -8,6 +8,7 @@ import {
 } from '../utils/question-bank'
 import {
   replaceActivePracticeSession,
+  saveActivePracticeSession,
   type PracticeFeedbackMode,
 } from '../utils/practice-session'
 import { abortAllLlmRequests } from '../utils/llm'
@@ -16,6 +17,9 @@ import {
   createQuestionsGenerationJobInBackend,
 } from '../utils/backend-sync'
 import { BackendApiError } from '../utils/backend-api'
+import { isLocalMnnEnabled } from '../utils/local-mnn-llm'
+import { runLocalQuizGenerationPipeline } from '../utils/quiz-generation/orchestrator'
+import type { StoredQuestion } from '../utils/question-bank'
 
 export interface StartPracticeGenerationInput {
   material: string
@@ -111,6 +115,58 @@ export async function startPracticeGeneration(
   input: StartPracticeGenerationInput,
 ): Promise<StartPracticeGenerationResult> {
   clearGenerationJob()
+
+  // ── 本地 MNN 推理路径（端侧离线模式） ──────────────────────
+  if (isLocalMnnEnabled()) {
+    try {
+      const localResult = await runLocalQuizGenerationPipeline(
+        input.material,
+        input.type,
+        input.initialBatchCount,
+        input.difficulty,
+        input.mode,
+        input.userTags,
+        {},
+      )
+
+      if (!localResult.success || !localResult.output) {
+        return {
+          success: false,
+          error: localResult.error || '本地模型生成失败',
+        }
+      }
+
+      const questions = localResult.output.questions
+      const saved = upsertStoredQuestions(questions as StoredQuestion[], { syncBackend: false })
+      const session = saveActivePracticeSession(saved, input.mode, input.feedbackMode)
+
+      if (!session) {
+        return {
+          success: false,
+          error: '本地生成结果无法创建练习会话',
+        }
+      }
+
+      return {
+        success: true,
+        output: {
+          savedCount: saved.length,
+          sessionId: session.id,
+        },
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : GENERATE_FAIL_MESSAGE
+      if (isDevRuntime()) {
+        console.error('Local MNN generate failed:', error)
+      }
+      return {
+        success: false,
+        error: `[本地模型] ${message.trim() || GENERATE_FAIL_MESSAGE}`,
+      }
+    }
+  }
+
+  // ── 云端后端路径（开发 fallback） ──────────────────────────
   try {
     const backendPayload = {
       material: input.material,
@@ -200,6 +256,12 @@ export async function startPracticeGeneration(
 }
 
 export function cancelPracticeGeneration(input: StartPracticeGenerationInput): void {
+  // 本地 MNN 模式下取消本地推理请求
+  if (isLocalMnnEnabled()) {
+    abortAllLlmRequests()
+    return
+  }
+
   const backendPayload = {
     material: input.material,
     type: input.type,

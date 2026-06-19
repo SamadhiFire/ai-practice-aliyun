@@ -1,0 +1,141 @@
+The device supports: i8sdot:0, fp16:0, i8mm: 0, sve2: 0, sme2: 0
+Don't has bizCode, use MNNTest for default
+Start to Convert Other Model Format To MNN Model..., target version: 3.6
+[16:25:25] @ 46: ONNX Model ir version: 8
+[16:25:25] @ 47: ONNX Model opset version: 15
+Start to Optimize the MNN Net...
+Save Weight to ./model\llm.mnn.weight
+inputTensors : [ input_ids, attention_mask, position_ids, logits_index, ]
+outputTensors: [ logits, hidden_states, ]
+Converted Success!
+The device supports: i8sdot:0, fp16:0, i8mm: 0, sve2: 0, sme2: 0
+Don't has bizCode, use MNNTest for default
+Start to Convert Other Model Format To MNN Model..., target version: 3.6
+[16:33:17] @ 46: ONNX Model ir version: 8
+[16:33:17] @ 47: ONNX Model opset version: 15
+Start to Optimize the MNN Net...
+Save Weight to ./model\llm.mnn.weight
+inputTensors : [ input_ids, attention_mask, position_ids, logits_index, ]
+outputTensors: [ logits, hidden_states, ]
+Converted Success!
+Collecting aliyun-log-python-sdk
+  Using cached aliyun_log_python_sdk-0.9.47.tar.gz (169 kB)
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Collecting six (from aliyun-log-python-sdk)
+  Using cached six-1.17.0-py2.py3-none-any.whl.metadata (1.7 kB)
+Collecting requests (from aliyun-log-python-sdk)
+  Using cached requests-2.34.2-py3-none-any.whl.metadata (4.8 kB)
+Collecting python-dateutil (from aliyun-log-python-sdk)
+  Using cached python_dateutil-2.9.0.post0-py2.py3-none-any.whl.metadata (8.4 kB)
+Collecting elasticsearch (from aliyun-log-python-sdk)
+  Using cached elasticsearch-9.4.1-py3-none-any.whl.metadata (9.0 kB)
+Collecting jmespath (from aliyun-log-python-sdk)
+  Downloading jmespath-1.1.0-py3-none-any.whl.metadata (7.6 kB)
+Collecting dateparser (from aliyun-log-python-sdk)
+  Using cached dateparser-1.4.1-py3-none-any.whl.metadata (22 kB)
+Collecting protobuf<6.0.0,>=3.20.3 (from aliyun-log-python-sdk)
+  Downloading protobuf-5.29.6-cp310-abi3-win_amd64.whl.metadata (592 bytes)
+Collecting lz4 (from aliyun-log-python-sdk)
+  Downloading lz4-4.4.5-cp310-cp310-win_amd64.whl.metadata (3.9 kB)
+Collecting pytz>=2024.2 (from dateparser->aliyun-log-python-sdk)
+  Using cached pytz-2026.2-py2.py3-none-any.whl.metadata (22 kB)
+Requirement already satisfied: regex>=2024.9.11 in c:\users\32530\.conda\envs\mnn-convert\lib\site-packages (from dateparser->aliyun-log-python-sdk) (2026.5.9)
+Collecting tzlocal>=0.2 (from dateparser->aliyun-log-python-sdk)
+  Using cached tzlocal-5.4.3-py3-none-any.whl.metadata (7.7 kB)
+Collecting tzdata (from tzlocal>=0.2->dateparser->aliyun-log-python-sdk)
+  Downloading tzdata-2026.2-py2.py3-none-any.whl.metadata (1.4 kB)
+Requirement already satisfied: anyio in c:\users\32530\.conda\envs\mnn-convert\lib\site-packages (from elasticsearch->aliyun-log-python-sdk) (4.14.0)
+Collecting elastic-transport<10,>=9.4.1 (from elasticsearch->aliyun-log-python-sdk)
+  Using cached elastic_transport-9.4.2-py3-none-any.whl.metadata (3.9 kB)
+Collecting sniffio (from elasticsearch->aliyun-log-python-sdk)
+  Using cached sniffio-1.3.1-py3-none-any.whl.metadata (3.9 kB)
+Requirement already satisfied: typing-extensions in c:\users\32530\.conda\envs\mnn-convert\lib\site-packages (from elasticsearch->aliyun-log-python-sdk) (4.15.0)
+Collecting urllib3<3,>=2 (from elastic-transport<10,>=9.4.1->elasticsearch->aliyun-log-python-sdk)
+  Using cached urllib3-2.7.0-py3-none-any.whl.metadata (6.9 kB)
+Requirement already satisfied: certifi in c:\users\32530\.conda\envs\mnn-convert\lib\site-packages (from elastic-transport<10,>=9.4.1->elasticsearch->aliyun-log-python-sdk) (2026.6.17)
+Requirement already satisfied: exceptiongroup>=1.0.2 in c:\users\32530\.conda\envs\mnn-convert\lib\site-packages (from anyio->elasticsearch->aliyun-log-python-sdk) (1.3.1)
+Requirement already satisfied: idna>=2.8 in c:\users\32530\.conda\envs\mnn-convert\lib\site-packages (from anyio->elasticsearch->aliyun-log-python-sdk) (3.18)
+Collecting charset_normalizer<4,>=2 (from requests->aliyun-log-python-sdk)
+  Downloading charset_normalizer-3.4.7-cp310-cp310-win_amd64.whl.metadata (41 kB)
+Downloading protobuf-5.29.6-cp310-abi3-win_amd64.whl (435 kB)
+Using cached dateparser-1.4.1-py3-none-any.whl (300 kB)
+Using cached python_dateutil-2.9.0.post0-py2.py3-none-any.whl (229 kB)
+Using cached pytz-2026.2-py2.py3-none-any.whl (510 kB)
+Using cached six-1.17.0-py2.py3-none-any.whl (11 kB)
+Using cached tzlocal-5.4.3-py3-none-any.whl (18 kB)
+Using cached elasticsearch-9.4.1-py3-none-any.whl (993 kB)
+Using cached elastic_transport-9.4.2-py3-none-any.whl (66 kB)
+Using cached urllib3-2.7.0-py3-none-any.whl (131 kB)
+Downloading jmespath-1.1.0-py3-none-any.whl (20 kB)
+Downloading lz4-4.4.5-cp310-cp310-win_amd64.whl (99 kB)
+Using cached requests-2.34.2-py3-none-any.whl (73 kB)
+Downloading charset_normalizer-3.4.7-cp310-cp310-win_amd64.whl (159 kB)
+Using cached sniffio-1.3.1-py3-none-any.whl (10 kB)
+Downloading tzdata-2026.2-py2.py3-none-any.whl (349 kB)
+Building wheels for collected packages: aliyun-log-python-sdk
+  Building wheel for aliyun-log-python-sdk (pyproject.toml): started
+  Building wheel for aliyun-log-python-sdk (pyproject.toml): finished with status 'done'
+  Created wheel for aliyun-log-python-sdk: filename=aliyun_log_python_sdk-0.9.47-py3-none-any.whl size=231693 sha256=20a19bd837295c5461e32472fe67185ffb1b1a6966eb3c5de32f9398cf765d99
+  Stored in directory: c:\users\32530\appdata\local\pip\cache\wheels\67\cc\de\a43bdf925bf312de5fcf8e717238b5c204f0eec7eb87abbc79
+Successfully built aliyun-log-python-sdk
+Installing collected packages: pytz, urllib3, tzdata, sniffio, six, protobuf, lz4, jmespath, charset_normalizer, tzlocal, requests, python-dateutil, elastic-transport, elasticsearch, dateparser, aliyun-log-python-sdk
+  Attempting uninstall: protobuf
+    Found existing installation: protobuf 7.35.1
+    Uninstalling protobuf-7.35.1:
+      Successfully uninstalled protobuf-7.35.1
+
+Successfully installed aliyun-log-python-sdk-0.9.47 charset_normalizer-3.4.7 dateparser-1.4.1 elastic-transport-9.4.2 elasticsearch-9.4.1 jmespath-1.1.0 lz4-4.4.5 protobuf-5.29.6 python-dateutil-2.9.0.post0 pytz-2026.2 requests-2.34.2 six-1.17.0 sniffio-1.3.1 tzdata-2026.2 tzlocal-5.4.3 urllib3-2.7.0
+The device supports: i8sdot:0, fp16:0, i8mm: 0, sve2: 0, sme2: 0
+Don't has bizCode, use MNNTest for default
+Start to Convert Other Model Format To MNN Model..., target version: 3.6
+[16:53:04] @ 46: ONNX Model ir version: 8
+[16:53:04] @ 47: ONNX Model opset version: 15
+Start to Optimize the MNN Net...
+Save Weight to ./model\llm.mnn.weight
+inputTensors : [ input_ids, attention_mask, position_ids, logits_index, ]
+outputTensors: [ logits, hidden_states, ]
+Converted Success!
+The device supports: i8sdot:0, fp16:0, i8mm: 0, sve2: 0, sme2: 0
+Don't has bizCode, use MNNTest for default
+Start to Convert Other Model Format To MNN Model..., target version: 3.6
+[16:55:29] @ 46: ONNX Model ir version: 8
+[16:55:29] @ 47: ONNX Model opset version: 15
+Start to Optimize the MNN Net...
+Save Weight to ./model\llm.mnn.weight
+inputTensors : [ input_ids, attention_mask, position_ids, logits_index, ]
+outputTensors: [ logits, hidden_states, ]
+Converted Success!
+The device supports: i8sdot:0, fp16:0, i8mm: 0, sve2: 0, sme2: 0
+Don't has bizCode, use MNNTest for default
+Start to Convert Other Model Format To MNN Model..., target version: 3.6
+[23:41:48] :46: ONNX Model ir version: 8
+[23:41:48] :47: ONNX Model opset version: 15
+Start to Optimize the MNN Net...
+Save Weight to ./model\llm.mnn.weight
+inputTensors : [ input_ids, attention_mask, position_ids, logits_index, ]
+outputTensors: [ logits, hidden_states, ]
+Converted Success!
+The device supports: i8sdot:0, fp16:0, i8mm: 0, sve2: 0, sme2: 0
+Don't has bizCode, use MNNTest for default
+Start to Convert Other Model Format To MNN Model..., target version: 3.6
+MNNModel ./model\llm.mnn has convert to JsonFile ./model\llm.mnn.json.
+The device supports: i8sdot:0, fp16:0, i8mm: 0, sve2: 0, sme2: 0
+Don't has bizCode, use MNNTest for default
+Start to Convert Other Model Format To MNN Model..., target version: 3.6
+JsonFile ./model\llm.mnn.json has convert to MNNModel ./model\llm.mnn.
+The device supports: i8sdot:0, fp16:0, i8mm: 0, sve2: 0, sme2: 0
+Don't has bizCode, use MNNTest for default
+Start to Convert Other Model Format To MNN Model..., target version: 3.6
+Start to Optimize the MNN Net...
+inputTensors : [ input_ids, attention_mask, position_ids, logits_index, ]
+outputTensors: [ logits, hidden_states, ]
+Converted Success!
+The device supports: i8sdot:0, fp16:0, i8mm: 0, sve2: 0, sme2: 0
+Don't has bizCode, use MNNTest for default
+Start to Convert Other Model Format To MNN Model..., target version: 3.6
+MNNModel ./model\llm.mnn has convert to JsonFile ./model\llm.mnn.json.

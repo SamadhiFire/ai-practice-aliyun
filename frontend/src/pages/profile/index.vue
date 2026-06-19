@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="page-root">
     <view class="profile-fixed-shell" :style="fixedHeaderStyle">
       <view class="title-header">
@@ -51,7 +51,7 @@
           </view>
         </view>
 
-        <view class="panel oa-card-surface setting-panel" :class="[apiGuideHighlight ? 'is-api-guide-highlight' : '', showApiCheckRow ? 'has-api-status' : '']">
+        <view v-if="!isLocalMnnMode" class="panel oa-card-surface setting-panel" :class="[apiGuideHighlight ? 'is-api-guide-highlight' : '', showApiCheckRow ? 'has-api-status' : '']">
           <text class="section-title">API 配置</text>
 
           <view class="field-box">
@@ -110,6 +110,94 @@
             >
               {{ apiCheckUiStatus === 'checking' ? '检测中...' : '测试连接' }}
             </view>
+          </view>
+        </view>
+
+        <!-- 端侧模型状态 -->
+        <view class="section-card mnn-status-section panel oa-card-surface">
+          <view class="section-title">🤖 端侧推理引擎</view>
+
+          <view class="mnn-info-grid">
+            <view class="mnn-info-row">
+              <text class="mnn-label">运行环境</text>
+              <text class="mnn-value" :class="{ 'mnn-ok': mnnStatus?.available }">{{ mnnStatus?.available ? 'Android 原生' : 'H5/开发模式' }}</text>
+            </view>
+            <view class="mnn-info-row">
+              <text class="mnn-label">模型状态</text>
+              <text class="mnn-value" :class="{ 'mnn-ok': mnnStatus?.modelLoaded, 'mnn-warn': !mnnStatus?.modelLoaded }">{{ mnnStatus?.modelLoaded ? '已加载' : '未加载' }}</text>
+            </view>
+            <view class="mnn-info-row" v-if="mnnStatus?.modelName">
+              <text class="mnn-label">模型</text>
+              <text class="mnn-value">{{ mnnStatus.modelName }}</text>
+            </view>
+            <view class="mnn-info-row" v-if="mnnStatus?.modelPath">
+              <text class="mnn-label">模型路径</text>
+              <text class="mnn-value mnn-path-value">{{ mnnStatus.modelPath }}</text>
+            </view>
+            <view class="mnn-info-row">
+              <text class="mnn-label">包内模型资源</text>
+              <text class="mnn-value" :class="{ 'mnn-ok': mnnStatus?.packagedAssetsReady, 'mnn-warn': mnnStatus && !mnnStatus.packagedAssetsReady }">
+                {{ mnnStatus?.packagedAssetsReady ? '已打包' : '未打包' }}
+              </text>
+            </view>
+            <view class="mnn-info-row" v-if="mnnStatus?.assetsSyncedAtLoad">
+              <text class="mnn-label">模型同步</text>
+              <text class="mnn-value mnn-ok">已从 APK 资源同步到应用目录</text>
+            </view>
+            <view class="mnn-info-row">
+              <text class="mnn-label">推理后端</text>
+              <text class="mnn-value">{{ mnnStatus?.backendType === 'cpu' ? 'MNN CPU' : (mnnStatus?.backendType || '未知') }}</text>
+            </view>
+            <view class="mnn-info-row">
+              <text class="mnn-label">线程数</text>
+              <text class="mnn-value">{{ mnnStatus?.threadNum || '-' }}</text>
+            </view>
+            <view class="mnn-info-row">
+              <text class="mnn-label">ARM SME2</text>
+              <text class="mnn-value" :class="{ 'mnn-ok': mnnStatus?.sme2Enabled, 'mnn-warn': mnnStatus?.sme2Supported && !mnnStatus?.sme2Enabled }">{{ mnnStatus?.sme2Supported ? (mnnStatus?.sme2Enabled ? '✅ 已启用' : '⚠️ 支持但未启用') : '❌ 设备不支持' }}</text>
+            </view>
+            <view class="mnn-info-row" v-if="mnnStatus?.lastLatencyMs">
+              <text class="mnn-label">上次推理耗时</text>
+              <text class="mnn-value">{{ mnnStatus.lastLatencyMs }}ms ({{ mnnStatus.lastOutputTokens || 0 }} tokens) | {{ mnnStatus.lastTokensPerSecond?.toFixed(1) }} tok/s</text>
+            </view>
+            <view class="mnn-info-row" v-if="mnnStatus?.firstTokenLatencyMs">
+              <text class="mnn-label">首 token 延迟</text>
+              <text class="mnn-value">{{ mnnStatus.firstTokenLatencyMs }}ms</text>
+            </view>
+            <view class="mnn-info-row" v-if="mnnStatus?.requiredFilesMissing?.length">
+              <text class="mnn-label">缺少文件</text>
+              <text class="mnn-value mnn-path-value">{{ mnnStatus.requiredFilesMissing.join(', ') }}</text>
+            </view>
+            <view class="mnn-info-row" v-if="mnnStatus?.packagedAssetsMissing?.length">
+              <text class="mnn-label">包内缺失</text>
+              <text class="mnn-value mnn-path-value">{{ mnnStatus.packagedAssetsMissing.join(', ') }}</text>
+            </view>
+            <view class="mnn-info-row" v-if="mnnStatus?.error">
+              <text class="mnn-label">最近错误</text>
+              <text class="mnn-value mnn-path-value">{{ mnnStatus.error }}</text>
+            </view>
+          </view>
+
+          <view class="mnn-actions">
+            <button class="mnn-btn mnn-btn-primary" @click="handleLoadMnnModel" :disabled="mnnStatusLoading || mnnStatus?.modelLoaded">{{ mnnStatus?.modelLoaded ? '模型已加载' : '加载模型' }}</button>
+            <button class="mnn-btn mnn-btn-secondary" @click="handleReleaseMnnModel" :disabled="!mnnStatus?.modelLoaded">释放模型</button>
+            <button class="mnn-btn mnn-btn-secondary" @click="refreshMnnStatus" :disabled="mnnStatusLoading">刷新状态</button>
+          </view>
+
+          <view class="mnn-test-section">
+            <view class="section-subtitle">🧪 模型测试</view>
+            <textarea class="mnn-test-input" v-model="mnnTestPrompt" placeholder="输入测试 prompt，例如：你好" maxlength="500" />
+            <button class="mnn-btn mnn-btn-primary" @click="handleMnnTestRun" :disabled="mnnTestRunning">{{ mnnTestRunning ? '推理中...' : '运行测试' }}</button>
+            <view class="mnn-test-output" v-if="mnnTestResult">
+              <text>{{ mnnTestResult }}</text>
+            </view>
+          </view>
+
+          <view class="demo-section" v-if="isLocalMnnMode">
+            <view class="section-subtitle">🎯 演示材料</view>
+            <button class="mnn-btn mnn-btn-primary" @click="handleUseDemoMaterial">
+              使用演示材料体验端侧出题
+            </button>
           </view>
         </view>
 
@@ -352,6 +440,8 @@ import {
   type BackendUserProfile,
   updateBackendProfileByPayload,
 } from '../../utils/backend-user'
+import type { LocalMnnRuntimeStatus } from '../../utils/llm-runtime-status'
+import { getLocalMnnRuntimeStatus, loadLocalMnnModel, releaseLocalMnnModel, localMnnChatCompletion, isLocalMnnEnabled } from '../../utils/local-mnn-llm'
 
 interface LocalUserProfile {
   avatarUrl: string
@@ -375,6 +465,7 @@ type AppGuideGlobalData = {
   isFromGuide?: boolean
   isFromApiGuide?: boolean
   hasDismissedTagGuide?: boolean
+  tempInputContent?: string
 }
 
 type ApiCheckUiStatus = 'idle' | 'checking' | 'success' | 'error'
@@ -432,6 +523,14 @@ const authDialogMode = ref<'login' | 'register'>('login')
 const authDialogAccountDraft = ref('')
 const authDialogPasswordDraft = ref('')
 const authDialogConfirmPasswordDraft = ref('')
+
+// ── 端侧模型状态 ──
+const isLocalMnnMode = computed(() => isLocalMnnEnabled())
+const mnnStatus = ref<LocalMnnRuntimeStatus | null>(null)
+const mnnStatusLoading = ref(false)
+const mnnTestPrompt = ref('')
+const mnnTestResult = ref('')
+const mnnTestRunning = ref(false)
 
 type GenerateGoalTagsOptions = {
   regenerate?: boolean
@@ -1124,6 +1223,91 @@ function syncFixedHeaderHeight() {
   })
 }
 
+// ── 端侧模型操作 ──
+async function refreshMnnStatus() {
+  mnnStatusLoading.value = true
+  try {
+    mnnStatus.value = await getLocalMnnRuntimeStatus()
+  } catch (e) {
+    console.error('获取MNN状态失败', e)
+  } finally {
+    mnnStatusLoading.value = false
+  }
+}
+
+function getMnnLoadToastMessage(status: LocalMnnRuntimeStatus | null): string {
+  if (!status) return '模型加载失败'
+  if (status.errorCode === 'MODEL_ASSETS_NOT_PACKAGED') {
+    return '请先执行模型资源同步脚本'
+  }
+  if (status.requiredFilesMissing?.length) {
+    return `缺少文件: ${status.requiredFilesMissing[0]}`
+  }
+  return status.error || '模型加载失败'
+}
+
+async function handleLoadMnnModel() {
+  mnnStatusLoading.value = true
+  try {
+    mnnStatus.value = await loadLocalMnnModel()
+    if (mnnStatus.value?.modelLoaded) {
+      uni.showToast({ title: '模型已加载', icon: 'success' })
+    } else {
+      uni.showToast({ title: getMnnLoadToastMessage(mnnStatus.value), icon: 'none' })
+    }
+  } catch (e) {
+    uni.showToast({ title: '模型加载失败', icon: 'none' })
+  } finally {
+    mnnStatusLoading.value = false
+  }
+}
+
+async function handleReleaseMnnModel() {
+  try {
+    await releaseLocalMnnModel()
+    mnnStatus.value = await getLocalMnnRuntimeStatus()
+    uni.showToast({ title: '模型已释放', icon: 'success' })
+  } catch (e) {
+    uni.showToast({ title: '释放失败', icon: 'none' })
+  }
+}
+
+async function handleMnnTestRun() {
+  if (!mnnTestPrompt.value.trim()) {
+    uni.showToast({ title: '请输入测试内容', icon: 'none' })
+    return
+  }
+  if (!mnnStatus.value?.modelLoaded) {
+    uni.showToast({ title: '请先加载模型', icon: 'none' })
+    return
+  }
+  mnnTestRunning.value = true
+  mnnTestResult.value = ''
+  const startTime = Date.now()
+  try {
+    const result = await localMnnChatCompletion(
+      [{ role: 'user', content: mnnTestPrompt.value.trim() }],
+      undefined,
+      { maxOutputTokens: 256, temperature: 0.3 },
+    )
+    const elapsed = Date.now() - startTime
+    mnnTestResult.value = `[${elapsed}ms] ${result}`
+    await refreshMnnStatus()
+  } catch (e) {
+    mnnTestResult.value = `错误: ${e instanceof Error ? e.message : String(e)}`
+  } finally {
+    mnnTestRunning.value = false
+  }
+}
+
+const DEMO_MATERIAL_TEXT = '急救知识：心肺复苏（CPR）是抢救心脏骤停患者的关键措施。发现患者无意识、无呼吸后，应立即呼叫120并开始胸外按压。按压位置为两乳头连线中点，深度5-6厘米，频率100-120次/分。每30次按压后进行2次人工呼吸。自动体外除颤器（AED）到达后应立即使用，按语音提示操作。黄金抢救时间为4分钟内。中暑急救：立即将患者移至阴凉通风处，解开衣领，用冷水擦拭身体降温，补充淡盐水。如有呕吐，让患者侧卧防止窒息。烧伤处理：用流动冷水冲洗伤口至少15分钟，不要涂抹牙膏、酱油等偏方，用干净纱布覆盖后就医。'
+
+function handleUseDemoMaterial() {
+  const globalData = getGuideGlobalData()
+  globalData.tempInputContent = DEMO_MATERIAL_TEXT
+  uni.reLaunch({ url: '/pages/index/index' })
+}
+
 onShow(() => {
   stopNicknameEditing()
   safeTopPx.value = resolveStatusBarTopPadding()
@@ -1139,6 +1323,7 @@ onShow(() => {
   void hydrateProviderOptions()
   refreshBackendProfile()
   hydrateProfileDataFromBackend()
+  refreshMnnStatus()
 })
 
 onHide(() => {
@@ -1888,26 +2073,29 @@ async function generateGoalTags(options?: GenerateGoalTagsOptions | Event) {
     return
   }
 
-  const config = loadLlmConfig()
-  if (!config.apiKey.trim()) {
-    showGoalApiKeyRequiredError()
-    return
-  }
-
-  const validation = getProviderApiKeyValidation(config.provider, config.apiKey.trim())
-  if (validation.status !== 'success') {
-    const isConnected = await runApiKeyConnectivityCheck()
-    if (!isConnected) {
+  // 比赛版 / 本地 MNN 模式：跳过云端 API Key 验证，直接走端侧推理
+  if (!isLocalMnnEnabled()) {
+    const config = loadLlmConfig()
+    if (!config.apiKey.trim()) {
       showGoalApiKeyRequiredError()
       return
     }
-  } else {
-    clearGoalApiKeyErrorIfReady()
-  }
 
-  if (!String(apiKeyDraft.value || '').trim()) {
-    showGoalApiKeyRequiredError()
-    return
+    const validation = getProviderApiKeyValidation(config.provider, config.apiKey.trim())
+    if (validation.status !== 'success') {
+      const isConnected = await runApiKeyConnectivityCheck()
+      if (!isConnected) {
+        showGoalApiKeyRequiredError()
+        return
+      }
+    } else {
+      clearGoalApiKeyErrorIfReady()
+    }
+
+    if (!String(apiKeyDraft.value || '').trim()) {
+      showGoalApiKeyRequiredError()
+      return
+    }
   }
 
   goalLoading.value = true
@@ -3007,8 +3195,108 @@ function onProfileTitleDecoError() {
   opacity: 0;
 }
 
+/* ── 端侧模型 MNN ── */
+.mnn-status-section {
+  margin-bottom: 24rpx;
+}
+.mnn-info-grid {
+  padding: 16rpx 0;
+}
+.mnn-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12rpx 24rpx;
+  border-bottom: 1rpx solid rgba(0,0,0,0.05);
+}
+.mnn-label {
+  font-size: 28rpx;
+  color: #666;
+  flex-shrink: 0;
+}
+.mnn-value {
+  font-size: 28rpx;
+  color: #333;
+}
+.mnn-path-value {
+  word-break: break-all;
+  font-size: 22rpx;
+  color: #999;
+  font-family: monospace;
+  text-align: right;
+  flex: 1;
+  margin-left: 20rpx;
+}
+.mnn-ok {
+  color: #07C160;
+  font-weight: 600;
+}
+.mnn-warn {
+  color: #f59e0b;
+  font-weight: 600;
+}
+.mnn-actions {
+  display: flex;
+  gap: 16rpx;
+  padding: 20rpx 24rpx;
+  flex-wrap: wrap;
+}
+.mnn-btn {
+  flex: 1;
+  min-width: 180rpx;
+  height: 72rpx;
+  line-height: 72rpx;
+  border-radius: 12rpx;
+  font-size: 26rpx;
+  text-align: center;
+  border: none;
+}
+.mnn-btn-primary {
+  background: linear-gradient(135deg, #07C160, #06A954);
+  color: #fff;
+}
+.mnn-btn-primary[disabled] {
+  opacity: 0.5;
+}
+.mnn-btn-secondary {
+  background: #f3f4f6;
+  color: #374151;
+}
+.mnn-btn-secondary[disabled] {
+  opacity: 0.4;
+}
+.mnn-test-section {
+  padding: 20rpx 24rpx;
+  border-top: 1rpx solid rgba(0,0,0,0.06);
+}
+.section-subtitle {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 16rpx;
+}
+.mnn-test-input {
+  width: 100%;
+  height: 160rpx;
+  border: 2rpx solid #e5e7eb;
+  border-radius: 12rpx;
+  padding: 16rpx;
+  font-size: 26rpx;
+  margin-bottom: 16rpx;
+  box-sizing: border-box;
+}
+.mnn-test-output {
+  margin-top: 16rpx;
+  padding: 20rpx;
+  background: #f9fafb;
+  border-radius: 12rpx;
+  font-size: 26rpx;
+  color: #374151;
+  word-break: break-all;
+  max-height: 400rpx;
+  overflow-y: auto;
+}
+
 </style>
-
-
 
 

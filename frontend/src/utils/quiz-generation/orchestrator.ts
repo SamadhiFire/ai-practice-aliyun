@@ -11,6 +11,7 @@ import {
   writePipelineResultCache,
 } from './cache'
 import { fallbackKeypointsFromChunks, fallbackQuestions, finalizeQuestionSet } from './fallback'
+import { isLocalMnnEnabled } from '../../utils/local-mnn-llm'
 import {
   buildKeypointQuotas,
   estimateUsableCandidateCount,
@@ -23,10 +24,13 @@ import {
   buildBundleGenerationPrompt,
   buildKeypointExtractionPrompt,
   buildKeypointPromptMaterial,
+  buildMnnBundlePrompt,
+  buildMnnQuestionPrompt,
   buildQuestionGenerationPrompt,
   buildQuestionPromptMaterial,
   pickRepresentativeChunks,
 } from './prompt-builder'
+import type { JsonPromptRequest, ProviderJsonCompletion } from './provider-adapter'
 import { createQuizGenerationProviderAdapter } from './provider-adapter'
 import { buildMaterialSignature, normalizeSignatureList, uniqueTexts } from './shared'
 
@@ -43,6 +47,27 @@ export interface PipelineRunOptions {
 }
 
 const providerAdapter = createQuizGenerationProviderAdapter()
+
+const JSON_REPAIR_MESSAGE = '你上次的输出无法解析为合法 JSON。请只输出纯 JSON 对象（以 { 开头），不要 ``` 代码块，不要任何解释文字。严格按照之前的 schema 输出。'
+const MAX_JSON_REPAIR_RETRIES = 1
+
+async function completeJsonWithRepair(request: JsonPromptRequest): Promise<ProviderJsonCompletion> {
+  try {
+    return await providerAdapter.completeJson(request)
+  } catch {
+    const repairRequest: JsonPromptRequest = {
+      messages: [
+        ...request.messages,
+        { role: 'user', content: JSON_REPAIR_MESSAGE },
+      ],
+      options: {
+        ...request.options,
+        maxOutputTokens: (request.options?.maxOutputTokens || 2000) + 300,
+      },
+    }
+    return await providerAdapter.completeJson(repairRequest)
+  }
+}
 
 async function extractKeypointsFromMaterial(material: string): Promise<Keypoint[]> {
   const response = await providerAdapter.completeJson(buildKeypointExtractionPrompt(material))
@@ -61,16 +86,28 @@ async function generateBundleByLlm(
     generationSeed?: string
   },
 ): Promise<unknown> {
-  const response = await providerAdapter.completeJson(buildBundleGenerationPrompt({
-    material,
-    type,
-    count,
-    difficulty,
-    mode,
-    userTags,
-    temperature: options?.temperature,
-    generationSeed: options?.generationSeed,
-  }))
+  const promptRequest = isLocalMnnEnabled()
+    ? buildMnnBundlePrompt({
+      material,
+      type,
+      count,
+      difficulty,
+      mode,
+      userTags,
+      temperature: options?.temperature,
+      generationSeed: options?.generationSeed,
+    })
+    : buildBundleGenerationPrompt({
+      material,
+      type,
+      count,
+      difficulty,
+      mode,
+      userTags,
+      temperature: options?.temperature,
+      generationSeed: options?.generationSeed,
+    })
+  const response = await completeJsonWithRepair(promptRequest)
   return response.payload
 }
 
@@ -95,18 +132,32 @@ async function generateQuestionsByLlm(
     evidence_quote: item.keypoint.evidence_quote,
   }))
 
-  const response = await providerAdapter.completeJson(buildQuestionGenerationPrompt({
-    material,
-    keypoints,
-    keypointPlan,
-    type,
-    count,
-    difficulty,
-    mode,
-    userTags,
-    temperature: options?.temperature,
-    generationSeed: options?.generationSeed,
-  }))
+  const questionPromptRequest = isLocalMnnEnabled()
+    ? buildMnnQuestionPrompt({
+      material,
+      keypoints,
+      keypointPlan,
+      type,
+      count,
+      difficulty,
+      mode,
+      userTags,
+      temperature: options?.temperature,
+      generationSeed: options?.generationSeed,
+    })
+    : buildQuestionGenerationPrompt({
+      material,
+      keypoints,
+      keypointPlan,
+      type,
+      count,
+      difficulty,
+      mode,
+      userTags,
+      temperature: options?.temperature,
+      generationSeed: options?.generationSeed,
+    })
+  const response = await completeJsonWithRepair(questionPromptRequest)
 
   return normalizeQuestions(response.payload, keypoints, type, difficulty, userTags)
 }
@@ -137,7 +188,8 @@ export async function runLocalQuizGenerationPipeline(
       return { success: false, error: '材料无法分块，请补充内容后重试' }
     }
 
-    const questionCount = Math.min(Math.max(1, count), 20)
+    const cap = isLocalMnnEnabled() ? 10 : 20
+    const questionCount = Math.min(Math.max(1, count), cap)
     const resultCacheKey = buildPipelineResultCacheKey(
       sourceSignature,
       type,
