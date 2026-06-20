@@ -17,17 +17,9 @@
                 ]
             }
         },
-        "nativePlugins" : [
-            {
-                "plugins" : [
-                    {
-                        "type" : "module",
-                        "name" : "MnnQwenPlugin",
-                        "class" : "com.studyquiz.mnn.MnnQwenModule"
-                    }
-                ]
-            }
-        ],
+        "nativePlugins" : {
+            "MnnQwenPlugin" : {}
+        },
         "modules" : {}
     },
     "mp-weixin" : {

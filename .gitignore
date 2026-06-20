@@ -14,6 +14,7 @@ frontend/dist/
 deps/MNN/
 deps/mnn-android-sdk/
 deps/mnn-qwen-jni-build/
+deps/mnn-qwen-aar-build/
 models/Qwen/
 models/qwen-mnn/llm.mnn
 models/qwen-mnn/llm.mnn.weight
@@ -23,5 +24,6 @@ models/qwen-mnn/embeddings_bf16.bin
 
 # Android 原生插件编译产物
 frontend/nativeplugins/MnnQwenPlugin/android/src/main/jniLibs/arm64-v8a/*.so
+frontend/nativeplugins/MnnQwenPlugin/android/libs/*.aar
 frontend/nativeplugins/MnnQwenPlugin/android/src/main/assets/models/qwen-mnn/*
 !frontend/nativeplugins/MnnQwenPlugin/android/src/main/assets/models/qwen-mnn/.gitkeep
