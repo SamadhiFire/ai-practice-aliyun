@@ -15,6 +15,16 @@ deps/MNN/
 deps/mnn-android-sdk/
 deps/mnn-qwen-jni-build/
 deps/mnn-qwen-aar-build/
+deps/demo-debug.keystore
+deps/tools/apktool.jar
+deps/tools/apksig-*.jar
+deps/tools/apksig-classes/
+deps/tools/android-repository*.xml
+deps/tools/build-tools_*.zip
+deps/tools/android-build-tools/
+deps/apk-patch-work/
+deps/apk-icon-work/
+deps/apktool-framework/
 models/Qwen/
 models/qwen-mnn/llm.mnn
 models/qwen-mnn/llm.mnn.weight

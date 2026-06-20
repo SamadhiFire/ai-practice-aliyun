@@ -16,6 +16,16 @@
                     "<uses-permission android:name=\"android.permission.WRITE_EXTERNAL_STORAGE\"/>"
                 ]
             },
+            "icons" : {
+                "android" : {
+                    "ldpi" : "static/app-icons/android/icon-36.png",
+                    "mdpi" : "static/app-icons/android/icon-48.png",
+                    "hdpi" : "static/app-icons/android/icon-72.png",
+                    "xhdpi" : "static/app-icons/android/icon-96.png",
+                    "xxhdpi" : "static/app-icons/android/icon-144.png",
+                    "xxxhdpi" : "static/app-icons/android/icon-192.png"
+                }
+            },
             "ios" : {
                 "dSYMs" : false
             }

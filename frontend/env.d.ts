@@ -1,4 +1,5 @@
-﻿/// <reference types="@dcloudio/types" />
+/// <reference types="@dcloudio/types" />
+/// <reference types="vite/client" />
 
 declare module '*.vue' {
   import type { DefineComponent } from 'vue'
@@ -9,4 +10,15 @@ declare module '*.vue' {
 declare module '*.svg' {
   const src: string
   export default src
+}
+
+interface ImportMetaEnv {
+  readonly VITE_LLM_RUNTIME?: 'local-mnn' | 'cloud' | 'auto'
+  readonly VITE_ENABLE_REMOTE_LLM?: string
+  readonly VITE_ENABLE_BACKEND_SYNC?: string
+  readonly VITE_API_BASE_URL?: string
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv
 }

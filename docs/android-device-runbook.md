@@ -63,6 +63,17 @@ npm.cmd run build:app
 
 `npm.cmd install` 只需在依赖发生变化或首次拉取项目时执行。
 
+### 4. 从自定义基座生成独立演示 APK
+
+如果已经有包含原生插件的自定义调试基座，并通过 HBuilderX 导出了 `unpackage/resources`，可以在本地合并前端资源并使用演示证书重新签名，无需再次提交云打包：
+
+```powershell
+cd D:\桌面\AGithub\ai-practice-aliyun\deps
+powershell -ExecutionPolicy Bypass -File .\build_standalone_demo_apk.ps1
+```
+
+输出为 `frontend/dist/release/ai-niuma-standalone-demo.apk`。该包可脱离 HBuilderX 安装演示，但使用本地自签名证书，仅用于测试和现场演示，不用于应用商店正式发布。
+
 ## 还需手动完成
 
 以下两项必须由你在账号或手机上操作，代码无法代替：

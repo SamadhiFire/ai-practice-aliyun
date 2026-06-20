@@ -286,13 +286,12 @@ export async function queryQuestionBankFromBackend(params: {
   total: number
   tagStats: Array<{ tag: string; count: number }>
 } | null> {
-  const search = new URLSearchParams()
-  if (params.mainTab) search.set('mainTab', params.mainTab)
-  if (params.tag) search.set('tag', params.tag)
-  if (params.page) search.set('page', String(params.page))
-  if (params.pageSize) search.set('pageSize', String(params.pageSize))
-
-  const suffix = search.toString()
+  const parts: string[] = []
+  if (params.mainTab) parts.push(`mainTab=${encodeURIComponent(params.mainTab)}`)
+  if (params.tag) parts.push(`tag=${encodeURIComponent(params.tag)}`)
+  if (params.page) parts.push(`page=${encodeURIComponent(String(params.page))}`)
+  if (params.pageSize) parts.push(`pageSize=${encodeURIComponent(String(params.pageSize))}`)
+  const suffix = parts.join('&')
   return requestWithAuth({
     path: `/question-bank${suffix ? `?${suffix}` : ''}`,
   })

@@ -310,8 +310,9 @@ export function getCachedRuntimeStatus(): LocalMnnRuntimeStatus {
  * - 其他/未设置：自动检测，原生环境走本地，其他走云端
  */
 export function isLocalMnnEnabled(): boolean {
-  // @ts-expect-error -- Vite 环境变量在编译期注入
-  const runtimeSetting = typeof import.meta !== 'undefined' && import.meta.env?.VITE_LLM_RUNTIME
+  // Vite replaces this value at build time. Avoid checking `typeof import.meta`:
+  // the app-plus transform turns that check into browser-only URL/document code.
+  const runtimeSetting = import.meta.env.VITE_LLM_RUNTIME
   if (runtimeSetting === 'cloud') return false
   if (runtimeSetting === 'local-mnn') return true
   return isNativeAndroidRuntime()
