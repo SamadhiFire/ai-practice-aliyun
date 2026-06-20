@@ -8,7 +8,7 @@ $repoRoot = Split-Path $PSScriptRoot -Parent
 $androidRoot = Join-Path $PSScriptRoot "mnn-qwen-android-plugin"
 $distributionAndroidRoot = Join-Path $repoRoot "frontend\nativeplugins\MnnQwenPlugin\android"
 $buildRoot = Join-Path $PSScriptRoot "mnn-qwen-aar-build"
-$outputDir = Join-Path $distributionAndroidRoot "libs"
+$outputDir = $distributionAndroidRoot
 $outputAar = Join-Path $outputDir "MnnQwenPlugin.aar"
 
 $javac = Join-Path $HBuilderXRoot "plugins\amazon-corretto\bin\javac.exe"

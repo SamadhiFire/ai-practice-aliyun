@@ -19,9 +19,9 @@
 当前 AAR：
 
 ```text
-frontend/nativeplugins/MnnQwenPlugin/android/libs/MnnQwenPlugin.aar
-大小：237,690,176 bytes（约 226.68 MB）
-SHA256：C13000E803605347A0B02A52228018963579074F349AC0FB14FB4560BC33DE02
+frontend/nativeplugins/MnnQwenPlugin/android/MnnQwenPlugin.aar
+大小：237,690,179 bytes（约 226.68 MB）
+SHA256：46FED82748AB9AEEBD1493EB08300F36D9196B050DAE58930F0E9F99FAAD9FC9
 ```
 
 完整 Android 插件构建源位于 `deps/mnn-qwen-android-plugin`；不要把该目录复制回 `frontend/nativeplugins`。

@@ -2,8 +2,8 @@
     "name" : "AI牛马刷题",
     "appid" : "__UNI__5B06C7F",
     "description" : "AI辅助刷题应用 - 端侧Qwen+MNN本地推理",
-    "versionName" : "2.0.0",
-    "versionCode" : "200",
+    "versionName" : "2.0.1",
+    "versionCode" : "201",
     "transformPx" : false,
     "app-plus" : {
         "distribute" : {
